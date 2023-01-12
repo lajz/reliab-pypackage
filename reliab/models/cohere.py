@@ -1,26 +1,23 @@
 
 from typing import Any, Dict, List
-
 from reliab.utils import get_from_dict_or_env
 from reliab.models.model import GenModel
-
 from pydantic import BaseModel, root_validator
 
-class OpenAI(BaseModel):
+class Cohere(BaseModel):
     
     client : Any
  
     @root_validator()
     def validate_environment(cls, values: Dict) -> Dict:
         """Validate that api key and python package exists in environment."""
-        openai_api_key = get_from_dict_or_env(
-            values, "openai_api_key", "OPENAI_API_KEY"
+        cohere_api_key = get_from_dict_or_env(
+            values, "cohere_api_key", "COHERE_API_KEY"
         )
         try:
-            import openai
+            import cohere
 
-            openai.api_key = openai_api_key
-            values["client"] = openai
+            values["client"] = cohere.Client(cohere_api_key)
         except ImportError:
             raise ValueError(
                 "Could not import openai python package. "
@@ -29,7 +26,7 @@ class OpenAI(BaseModel):
         return values
 
 
-class TextCompletion(GenModel, OpenAI):    
+class TextCompletion(GenModel, Cohere):    
         
     model: str
         
@@ -37,8 +34,8 @@ class TextCompletion(GenModel, OpenAI):
         responses = []
         generations = []
         for prompt in prompts:
-            response = self.client.Completion.create(prompt=prompt, **self.dict(), **kwargs)
-            generation = [choice.text for choice in response.choices]
+            response = self.client.generate(prompt=prompt, **self.dict(), **kwargs)
+            generation = [generation.text for generation in response.generations]
             responses.append(response)
             generations.append(generation)
         return GenModel.ModelResult(
